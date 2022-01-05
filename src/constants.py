@@ -1,0 +1,21 @@
+EPITOPE_CLASS_I = { 
+    '44RMA', '45KE', '56R', '62EE', '62GRN', '62QE', '65QIA', '66NH', '71TD', '73ID', '74Y', '76ED', '76VDT', '80TLR', '94I',
+    '97V', '105S', '144QL', '150AAH', '150AH', '158T', '193AV', '207S', '245AS' 
+}
+EPITOPE_CLASS_II_DR = {
+    '4Q', '6C', '30D', '30G[DR]', '31FY', '31FH', '32H', '37S', '67F', '70DA', '70DRA', '71A', '74A', '74L', '96EV', '96HK'
+    '108T', '140TV', '142M', '149H'
+}
+EPITOPE_CLASS_II_DQ = {
+    '45GV','45EV', '46VY'
+}
+
+RELEVANT_DESA_BAD = EPITOPE_CLASS_I | EPITOPE_CLASS_II_DR | EPITOPE_CLASS_II_DQ
+
+RELEVANT_DESA_GOOD = {
+    '26L[DR]', '28D', '30C', '31I', '37F', '37FL', '37YV[DQ]', '44RT','55PPA' , '57V[DR]', '57V[DQ]', '62LQ', '70QRA', '70QT',
+    '70QA', '71ATD', '71QS', '73AN', '73G', '73TVS',  '73GQ', '80I', '97S', '97N', '98KN', '104AK', '116I', '120N','125SQ', '125G', 
+    '130Q', '147L', '151AHA', '152A', '152RA', '152RR', '163RW', '173K', '177DT', '180E', '193PL',  '245V', '267QE' 
+}
+
+

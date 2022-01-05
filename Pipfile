@@ -10,6 +10,9 @@ seaborn = "*"
 matplotlib = "*"
 regex = "*"
 tqdm = "*"
+lifelines = "*"
+desa-paper = {editable = true, path = "."}
+statsmodels = "*"
 
 [dev-packages]
 ipykernel = "*"
