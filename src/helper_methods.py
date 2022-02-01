@@ -142,7 +142,10 @@ def plot_kaplan_meier_curve(kmfs:list,
     colors = ['black', 'blue', 'red']
     if not ax:
         fig, ax = plt.subplots(figsize=(8, 7))
-    [kmf.plot(ci_show=ci_show, color=colors[i], ax=ax) for i, kmf in enumerate(kmfs)]
+    
+    for i, kmf in enumerate(kmfs):
+        kmf.survival_function_ = kmf.survival_function_ * 100 
+        kmf.plot(ci_show=ci_show, color=colors[i], ax=ax) 
 
     # Add at-risk, censored, and failure statistics
     if add_counts:
@@ -166,10 +169,10 @@ def plot_kaplan_meier_curve(kmfs:list,
 
     # Final values
     if verbose:
-        kmfs_final = [kmf.survival_function_.values[-1][0]*100 for kmf in kmfs]
+        kmfs_final = [kmf.survival_function_.values[-1][0] for kmf in kmfs]
         print(f'Top curve: {kmfs_final[0]:.2f}, Middle curve: {kmfs_final[1]: .2f}, Lower curve:{kmfs_final[2]: .2f}')
         print(f'10-Year Gap is: {kmfs_final[0] - kmfs_final[2] : .2f}')
-        kmfs_100 = [kmf.survival_function_.values[100][0]*100 for kmf in kmfs]
+        kmfs_100 = [kmf.survival_function_.values[100][0] for kmf in kmfs]
         print(f'1-Year Gap is: {kmfs_100[1] - kmfs_100[2] : .2f}')
 
 def plot_scatter_diff(dataframe, desa_sets:list, confounders:list, donor_type:str='Deceased', adjust:bool=True, grid:bool=False):
