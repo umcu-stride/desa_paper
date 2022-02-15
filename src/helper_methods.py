@@ -1,5 +1,5 @@
 from collections import defaultdict
-from typing import  Sequence, Union
+from typing import  Sequence, Union, List
 import pandas as pd
 import numpy as np
 from lifelines import KaplanMeierFitter
@@ -33,19 +33,33 @@ def _get_indexes(df, donor_type, desa_spec:Union[str, Sequence]=None):
 
     return ind_T1, ind_T2, ind_T3
 
-def create_treatment_grups(data, desa_spec:set=None):
+def create_treatment_grups(data, desa_spec:Union[str, List[set]]=None):
     df = data.copy(deep=True)
-    desa_spec = set([desa_spec]) if isinstance(desa_spec, str) else desa_spec
-
+    desa_spec = [set([desa_spec])] if isinstance(desa_spec, str) else desa_spec
     if desa_spec:
-        df = df.assign(
-            No_DESA = df['DESA'].apply(lambda x: 0 if x else 1),
-            Specific_DESA = df['DESA'].apply(lambda x: 1 if x & desa_spec else 0),
-            Other_DESA =  df['DESA'].apply(lambda x: 1 if (x and not x & desa_spec) else 0),
-        )
-        return df.assign(
-            Groups = df[['No_DESA', 'Specific_DESA', 'Other_DESA']].values.argmax(1) + 1
-        )
+        if len(desa_spec) == 1:
+            df = df.assign(
+                No_DESA = df['DESA'].apply(lambda x: 0 if x else 1),
+                Specific_DESA = df['DESA'].apply(lambda x: 1 if x & desa_spec[0] else 0),
+                Other_DESA =  df['DESA'].apply(lambda x: 1 if (x and not x & desa_spec[0]) else 0),
+            )
+            return df.assign(
+                Groups = df[['No_DESA', 'Specific_DESA', 'Other_DESA']].values.argmax(1) + 1
+            )
+        elif len(desa_spec) == 2:
+            df = df.assign(
+                No_DESA = df['DESA'].apply(lambda x: 0 if x else 1),
+                Specific_DESA_1 = df['DESA'].apply(lambda x: 1 if x & desa_spec[0] else 0),
+                Specific_DESA_2 = df['DESA'].apply(lambda x: 1 if x & desa_spec[1] else 0),
+                Other_DESA =  df['DESA'].apply(
+                    lambda x: 1 if (x and not x & desa_spec[0] and not x & desa_spec[1]) else 0
+                ),
+            )
+            return df.assign(
+                Groups = df[['No_DESA', 'Specific_DESA_1', 'Specific_DESA_2', 'Other_DESA']].values.argmax(1) + 1
+            )
+        else:
+            raise ValueError('Specific set of DESA can not be larger than 2')
     df = df.assign(
         No_DESA = df['DESA'].apply(lambda x: 0 if x else 1),
         DESA_12 = df['#DESA'].apply(lambda x: 1 if x <= 2 else 0),
