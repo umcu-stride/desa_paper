@@ -62,16 +62,18 @@ def create_treatment_grups(data, desa_spec:Union[str, List[set]]=None):
             raise ValueError('Specific set of DESA can not be larger than 2')
     df = df.assign(
         No_DESA = df['DESA'].apply(lambda x: 0 if x else 1),
-        DESA_12 = df['#DESA'].apply(lambda x: 1 if x <= 2 else 0),
-        DESA_3orMore = df['#DESA'].apply(lambda x: 1 if x >= 3 else 0),
+        DESA_12 = df['#DESA'].apply(lambda x: 1 if (x >= 1) & (x <= 2) else 0),
+        DESA_34 = df['#DESA'].apply(lambda x: 1 if (x >= 3) & (x <= 4) else 0),
+        DESA_5ormore = df['#DESA'].apply(lambda x: 1 if x >= 5 else 0),
     )
     return df.assign(
-        Groups = df[['No_DESA', 'DESA_12', 'DESA_3orMore']].values.argmax(1) + 1
+        Groups = df[['No_DESA', 'DESA_12', 'DESA_34', 'DESA_5ormore']].values.argmax(1) + 1
     )
 
-def feature_scaler(df, scaler='standard'):
-    num_vars = ['RecipientAge_NOTR', 'DonorAge_NOTR', 'CIPHour_DBD', 'CIPHour_DCD']
-    for var in num_vars:
+def feature_scaler(df, num_col:list=None, scaler='standard'):
+    if not num_col:
+        num_col = ['RecipientAge_NOTR', 'DonorAge_NOTR', 'DialysisYears', 'CIPHour_DBD', 'CIPHour_DCD']
+    for var in num_col:
         try:
             if scaler == 'standard':
                 mean = df[var].mean()
@@ -84,15 +86,26 @@ def feature_scaler(df, scaler='standard'):
             pass
     return df
 
-def find_ipw(df, confounders, treatments, verbose=False) -> pd.Series:
-    """ This method finds the inverse probability weights use in causal inference per treatment group """    
+def find_ipw(df, confounders, treatments, scaler='standard', num_col:list=None, verbose=False,) -> pd.Series:
+    """ 
+    This method finds the inverse probability weights use in causal inference per treatment group 
+    This method already carries out the scaling by default. Thus, be advised not to do feeature scaling before.
+
+    Parameters:
+    num_col: List[str], None
+        Numerical columns to be scaled. If nothing is passed in, feature scaler uses its default
+        columns for scaling. 
+    """
+
+    df_ipw = df.copy(deep=True)
     # scale the features
-    df = feature_scaler(df, scaler='maxmin')
+    if scaler:
+        df_ipw = feature_scaler(df_ipw, num_col, scaler=scaler)
     
     # Propensity model
     formulas = [treatment + ' ~ ' + ' + '.join(confounders) for treatment in treatments]
     models = [
-        smf.glm(formula=formulas[i], data=df, family=sm.families.Binomial())
+        smf.glm(formula=formulas[i], data=df_ipw, family=sm.families.Binomial())
         .fit() for i in range(len(treatments))
     ]
 
@@ -105,8 +118,8 @@ def find_ipw(df, confounders, treatments, verbose=False) -> pd.Series:
         # print('sum propensity score', sum(propensity_scores))
 
     # Calculate the weights
-    df['w'] = sum([(df[treatment]==1) / p[i] for i, treatment in enumerate(treatments)])
-    return df
+    df_ipw['w'] = sum([(df_ipw[treatment]==1) / p[i] for i, treatment in enumerate(treatments)])
+    return df_ipw
 
 def kaplan_meier_curves(df:pd.DataFrame, 
                         desa_spec:Union[str, Sequence]=None,
@@ -134,8 +147,9 @@ def kaplan_meier_curves(df:pd.DataFrame,
         KaplanMeierFitter(label=labels[i])
         .fit(T[i], event_observed=E[i], timeline=t, weights=W[i]) for i in range(len(T)) 
     ]
+    df_p = df[df.TypeOfDonor_NOTR == donor_type]
     p_value = multivariate_logrank_test(
-        df['GraftSurvival10Y_R'], df['Groups'], df['FailureCode10Y_R']
+        df_p['GraftSurvival10Y_R'], df_p['Groups'], df_p['FailureCode10Y_R']
         ).p_value
     return kmfs, p_value
     
@@ -150,10 +164,10 @@ def plot_kaplan_meier_curve(kmfs:list,
                             legend_size = 10,
                             xlabel:str='Years after Tranplantation',
                             ylabel:str='Graft Survival (%)',
+                            colors:List[str]= ['black', 'blue', 'red'],
                             verbose:bool=False):
     """ kmfs: is a list of KaplanMeierFitter instances already fitted """
 
-    colors = ['black', 'blue', 'red']
     if not ax:
         fig, ax = plt.subplots(figsize=(8, 7))
     
@@ -166,8 +180,8 @@ def plot_kaplan_meier_curve(kmfs:list,
         add_at_risk_counts(*kmfs, ax=ax, fontsize=15)
 
     # add p-value 
-    if p_value:
-        p_value_string = 'p < 0.0001' if p_value < 0.0001 else f'p = {p_value}'
+    if p_value: 
+        p_value_string = 'p < 0.0001' if p_value < 0.0001 else f'p = {p_value:.2f}'
         ax.add_artist(AnchoredText(p_value_string, loc=4, frameon=False))
 
     # Other figure settings
@@ -211,7 +225,7 @@ def plot_scatter_diff(dataframe, desa_sets:list, confounders:list, donor_type:st
         ax.scatter(diffs[i]['x'], diffs[i]['y'],  color=colors[i], label=labels[i], linewidth=2.5, alpha= 0.25)
     plt.axhline(0.1, color='black', linestyle='dashed')
     plt.axhline(-0.1, color='black', linestyle='dashed')
-    ax.set_xlabel('Years after Tranplantation', fontsize=20)
+    ax.set_xlabel('Years after Transplantation', fontsize=20)
     ax.set_ylabel('Diff Graft Survival (%)', fontsize=20)
     ax.legend(prop={"size":15})
     ax.grid(grid)

@@ -94,6 +94,7 @@ def epitope_preparation(epitopes:Sequence):
 def features_from_antibody_epitopes(df):
 
     df = df.assign(
+        No_DESA = df['DESA'].apply(lambda x: 0 if len(x) else 1),
         Relevant_DESA_Bad = df['DESA'].apply(lambda x: int(bool(x & RELEVANT_DESA_BAD))),
         Relevant_DESA_Good = df['DESA'].apply(lambda x: int(bool(x & RELEVANT_DESA_GOOD))),
         Class_I = df.EpvsHLA_Donor.apply(
@@ -203,6 +204,11 @@ def set_time_event_label(df:pd.DataFrame, E='Failure', T='Survival[Y]'):
     df['E'] = df['Failure']
     df['T'] = df['Survival[Y]']
     df.drop([E, T], axis=1, inplace=True)
+    return df
+
+def polynomial_power2(df:pd.DataFrame, *cols:str):
+    for col in list(cols):
+        df[col + '^2'] = df[col] *  df[col]
     return df
 
 @logging
