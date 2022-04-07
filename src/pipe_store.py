@@ -92,16 +92,20 @@ def epitope_preparation(epitopes:Sequence):
 
 
 def features_from_antibody_epitopes(df):
-
+    def get_class(x):
+        return { get_hla_class(hla.split('*')[0]) for hla in x.values() }
     df = df.assign(
         No_DESA = df['DESA'].apply(lambda x: 0 if len(x) else 1),
         Relevant_DESA_Bad = df['DESA'].apply(lambda x: int(bool(x & RELEVANT_DESA_BAD))),
         Relevant_DESA_Good = df['DESA'].apply(lambda x: int(bool(x & RELEVANT_DESA_GOOD))),
         Class_I = df.EpvsHLA_Donor.apply(
-                    lambda x: int('I' in { get_hla_class(hla.split('*')[0]) for hla in x.values() } ) 
+                    lambda x: int( ('I' in get_class(x)) & ('II' not in get_class(x)) ) 
                 ),
         Class_II = df.EpvsHLA_Donor.apply(
-                    lambda x:  int('II' in { get_hla_class(hla.split('*')[0]) for hla in x.values() } )  
+                    lambda x: int( ('II' in get_class(x)) & ('I' not in get_class(x)) ) 
+                ),
+        Class_I_II  = df.EpvsHLA_Donor.apply(
+                    lambda x: int( ('I' in get_class(x)) & ('II' in get_class(x)) ) 
                 ),
         # Epitopes = df['DESA'].apply(epitope_preparation),
     )
@@ -208,7 +212,7 @@ def set_time_event_label(df:pd.DataFrame, E='Failure', T='Survival[Y]'):
 
 def polynomial_power2(df:pd.DataFrame, *cols:str):
     for col in list(cols):
-        df[col + '^2'] = df[col] *  df[col]
+        df[col + '_power2'] = df[col] *  df[col]
     return df
 
 @logging

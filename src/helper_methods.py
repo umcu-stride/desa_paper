@@ -104,6 +104,7 @@ def find_ipw(df, confounders, treatments, scaler='standard', num_col:list=None, 
     
     # Propensity model
     formulas = [treatment + ' ~ ' + ' + '.join(confounders) for treatment in treatments]
+    print(formulas)
     models = [
         smf.glm(formula=formulas[i], data=df_ipw, family=sm.families.Binomial())
         .fit() for i in range(len(treatments))
@@ -140,8 +141,10 @@ def kaplan_meier_curves(df:pd.DataFrame,
     if adjust:
         assert 'w' in df.columns, 'Weight column is missing'
         W = [df.loc[ind_T1, 'w'], df.loc[ind_T2, 'w'], df.loc[ind_T3, 'w']]
+        weights = df[df.TypeOfDonor_NOTR == donor_type]['w']
     else:
         W = [None] * 3
+        weights = None
     t = np.linspace(0, 10, 1000)
     kmfs = [
         KaplanMeierFitter(label=labels[i])
@@ -149,7 +152,10 @@ def kaplan_meier_curves(df:pd.DataFrame,
     ]
     df_p = df[df.TypeOfDonor_NOTR == donor_type]
     p_value = multivariate_logrank_test(
-        df_p['GraftSurvival10Y_R'], df_p['Groups'], df_p['FailureCode10Y_R']
+        event_durations=df_p['GraftSurvival10Y_R'], 
+        groups=df_p['Groups'],
+        event_observed=df_p['FailureCode10Y_R'],
+        weights=weights,
         ).p_value
     return kmfs, p_value
     
