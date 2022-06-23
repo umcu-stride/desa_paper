@@ -33,6 +33,19 @@ def _get_indexes(df, donor_type, desa_spec:Union[str, Sequence]=None):
 
     return ind_T1, ind_T2, ind_T3
 
+def create_2_treatment_grups(data, desa_spec:Union[str, List[set]]=None):
+    df = data.copy(deep=True)
+    desa_spec = [set([desa_spec])] if isinstance(desa_spec, str) else desa_spec
+    if desa_spec:
+        if len(desa_spec) == 1:
+            df = df.assign(
+                Specific_DESA = df['DESA'].apply(lambda x: 1 if x & desa_spec[0] else 0),
+                Other_DESA =  df['DESA'].apply(lambda x: 1 if (x and not x & desa_spec[0]) else 0),
+            )
+            return df.assign(
+                Groups = df[['Specific_DESA', 'Other_DESA']].values.argmax(1) + 1
+            )
+            
 def create_treatment_grups(data, desa_spec:Union[str, List[set]]=None):
     df = data.copy(deep=True)
     desa_spec = [set([desa_spec])] if isinstance(desa_spec, str) else desa_spec
@@ -104,7 +117,6 @@ def find_ipw(df, confounders, treatments, scaler='standard', num_col:list=None, 
     
     # Propensity model
     formulas = [treatment + ' ~ ' + ' + '.join(confounders) for treatment in treatments]
-    print(formulas)
     models = [
         smf.glm(formula=formulas[i], data=df_ipw, family=sm.families.Binomial())
         .fit() for i in range(len(treatments))
@@ -126,7 +138,9 @@ def kaplan_meier_curves(df:pd.DataFrame,
                         desa_spec:Union[str, Sequence]=None,
                         donor_type:str='Deceased',
                         labels:list=None,
-                        adjust=False):
+                        timeline:np.array= np.linspace(0, 10, 1000),
+                        adjust=False,
+                        p_value=True,):
 
     assert 'Groups' in df.columns, 'Groups column is missing'
     if 'GraftSurvival10Y_R' in df.columns:
@@ -138,25 +152,26 @@ def kaplan_meier_curves(df:pd.DataFrame,
 
     T = [df.loc[ind_T1, time], df.loc[ind_T2, time], df.loc[ind_T3, time]]
     E = [df.loc[ind_T1, failure], df.loc[ind_T2, failure], df.loc[ind_T3, failure]]
+    df_p = df[df.TypeOfDonor_NOTR == donor_type].reset_index()
     if adjust:
         assert 'w' in df.columns, 'Weight column is missing'
         W = [df.loc[ind_T1, 'w'], df.loc[ind_T2, 'w'], df.loc[ind_T3, 'w']]
-        weights = df[df.TypeOfDonor_NOTR == donor_type]['w']
+        weights = df_p['w']
     else:
         W = [None] * 3
         weights = None
-    t = np.linspace(0, 10, 1000)
     kmfs = [
         KaplanMeierFitter(label=labels[i])
-        .fit(T[i], event_observed=E[i], timeline=t, weights=W[i]) for i in range(len(T)) 
+        .fit(T[i], event_observed=E[i], timeline=timeline, weights=W[i]) for i in range(len(T)) 
     ]
-    df_p = df[df.TypeOfDonor_NOTR == donor_type]
-    p_value = multivariate_logrank_test(
-        event_durations=df_p['GraftSurvival10Y_R'], 
-        groups=df_p['Groups'],
-        event_observed=df_p['FailureCode10Y_R'],
-        weights=weights,
-        ).p_value
+    if p_value:
+        p_value = multivariate_logrank_test(
+            event_durations=df_p['GraftSurvival10Y_R'], 
+            groups=df_p['Groups'],
+            event_observed=df_p['FailureCode10Y_R'],
+            weights=weights,
+            weightings='wilcoxon',# 'tarone-ware', 'peto', 'fleming-harrington' 
+            ).p_value
     return kmfs, p_value
     
 def plot_kaplan_meier_curve(kmfs:list, 
@@ -171,11 +186,12 @@ def plot_kaplan_meier_curve(kmfs:list,
                             xlabel:str='Years after Tranplantation',
                             ylabel:str='Graft Survival (%)',
                             colors:List[str]= ['black', 'blue', 'red'],
-                            verbose:bool=False):
+                            verbose:bool=False,
+                            x_lim=None):
     """ kmfs: is a list of KaplanMeierFitter instances already fitted """
 
     if not ax:
-        fig, ax = plt.subplots(figsize=(8, 7))
+        fig, ax = plt.subplots(figsize=(6, 5))
     
     for i, kmf in enumerate(kmfs):
         kmf.survival_function_ = kmf.survival_function_ * 100 
@@ -187,17 +203,19 @@ def plot_kaplan_meier_curve(kmfs:list,
 
     # add p-value 
     if p_value: 
-        p_value_string = 'p < 0.0001' if p_value < 0.0001 else f'p = {p_value:.2f}'
+        p_value_string = 'p < 0.0001' if p_value < 0.0001 else f'p = {p_value:.4f}'
         ax.add_artist(AnchoredText(p_value_string, loc=4, frameon=False))
 
     # Other figure settings
     if title:
         ax.set_title(title, fontsize=fontsize)
-    ax.set_xlabel(xlabel, fontsize=fontsize)
-    ax.set_ylabel(ylabel, fontsize=fontsize)
+    ax.set_xlabel(xlabel, fontsize=fontsize - 2)
+    ax.set_ylabel(ylabel, fontsize=fontsize - 2)
     ax.legend(prop={"size":legend_size})
     ax.grid(grid)
     ax.set_ylim(0.2)
+    if x_lim:
+        ax.set_xlim(x_lim)
     # plt.tight_layout()
     # plt.show()
 
@@ -209,7 +227,7 @@ def plot_kaplan_meier_curve(kmfs:list,
         kmfs_100 = [kmf.survival_function_.values[100][0] for kmf in kmfs]
         print(f'1-Year Gap is: {kmfs_100[1] - kmfs_100[2] : .2f}')
 
-def plot_scatter_diff(dataframe, desa_sets:list, confounders:list, donor_type:str='Deceased', adjust:bool=True, grid:bool=False):
+def plot_scatter_diff(dataframe, desa_sets:list, confounders:list, donor_type:str='Deceased', adjust:bool=True, grid:bool=False, figsize:tuple=(20,10)):
     time_points = [10, 100, 200, 300, 400, 500, 600, 700, 800, 900, 980]
     diffs = defaultdict(lambda : defaultdict(list))
     treatments = ['No_DESA', 'Other_DESA', 'Specific_DESA']
@@ -220,19 +238,19 @@ def plot_scatter_diff(dataframe, desa_sets:list, confounders:list, donor_type:st
             df_weight = find_ipw(df_tret_group, confounders, treatments, verbose=False)
             kmfs, p_value = kaplan_meier_curves(df_weight, desa, donor_type=donor_type, labels=treatments)
             # Subtract all DESA from Specific DESA
-            diff = kmfs[1].subtract(kmfs[2])
+            diff = kmfs[1].subtract(kmfs[2]) * 100
             diffs[i]['x'].append(diff.index[time_points])
             diffs[i]['y'].append(diff.values[time_points])
 
-    fig, ax = plt.subplots(figsize=(22, 10))
+    fig, ax = plt.subplots(figsize=figsize)
     colors = ['red', 'yellow', 'green']
     labels = [ 'Relevant DESA [Bad]', 'Irrelevant DESA', 'Relevant DESA [Good]']
     for i in range(len(desa_sets)):
         ax.scatter(diffs[i]['x'], diffs[i]['y'],  color=colors[i], label=labels[i], linewidth=2.5, alpha= 0.25)
     plt.axhline(0.1, color='black', linestyle='dashed')
     plt.axhline(-0.1, color='black', linestyle='dashed')
-    ax.set_xlabel('Years after Transplantation', fontsize=20)
-    ax.set_ylabel('Diff Graft Survival (%)', fontsize=20)
-    ax.legend(prop={"size":15})
+    ax.set_xlabel('Years after Transplantation', fontsize=15)
+    ax.set_ylabel('Diff Graft Survival (%)', fontsize=15)
+    ax.legend(prop={"size":10})
     ax.grid(grid)
     plt.tight_layout()
