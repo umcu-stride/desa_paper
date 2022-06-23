@@ -195,7 +195,7 @@ def plot_kaplan_meier_curve(kmfs:list,
     
     for i, kmf in enumerate(kmfs):
         kmf.survival_function_ = kmf.survival_function_ * 100 
-        kmf.plot(ci_show=ci_show, color=colors[i], ax=ax) 
+        kmf.plot(ci_show=ci_show, color=colors[i], ax=ax, grid=grid) 
 
     # Add at-risk, censored, and failure statistics
     if add_counts:
