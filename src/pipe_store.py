@@ -205,7 +205,7 @@ def set_time_event_label(df:pd.DataFrame, E='Failure', T='Survival[Y]'):
     T: The time column in the dataset
     """
 
-    df['E'] = df['Failure']
+    df['E'] = df['Failure'].astype(bool)
     df['T'] = df['Survival[Y]']
     df.drop([E, T], axis=1, inplace=True)
     return df
