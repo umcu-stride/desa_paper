@@ -1,0 +1,130 @@
+""" Correspondence with Alek & Maarten from KU Leuven. The relevance of these discussions are on the missing luminex single antigen data"""
+
+Hi Danial,
+ 
+Please find attached 9 of the 11 remaining missing preDSA patients. I went all over my files but unfortunately could not find the raw data for 3529 and 3546. I hope this will not be a problem in validating your findings.
+ 
+Best regards,
+Alek
+
+================================================================================================
+ 
+Hello Alek,
+ 
+Thank you very much for the update. I can discard Tx 2790. However, based on my calculations, we are still missing 11 Tx numbers (way more than 3) as follow.
+{2817, 2860, 2872, 2963, 2982, 3003, 3006, 3075, 3104, 3529, 3546}
+ 
+What do you think could be the reason?
+ 
+ 
+Kind regards,  
+Danial
+ 
+================================================================================================ 
+ 
+ 
+Hello Henny and Danial, 
+
+I am attaching the missing SAB data for preDSA cohort. Unfortunately, I could not find the LSA data for 3 patients, so I suggest excluding those patients from your analysis. In addition, you should discard the SAB data for 2790 as this patient is from the remaining cohort with missing complete HR HLA data, which was excluded from our JASN paper.
+
+Best regards,
+Alek
+ 
+
+================================================================================================
+ 
+Hello Alek,
+
+ 
+
+Firs of all thanks @Alek for your support. In your data set, out of 926 sample, there are 240 samples with Pre Tx HLA antibody, where 95 of the samples belong to pre-Tx DSA.
+
+For the purpose of our research, it would be great if we can have the LSA data for all these 240 samples with Pre Tx HLA antibody. Is this possible?
+
+ 
+
+Getting back to the pre-Tx DSA samples, we have been able to connect the LSA data from 58 (.csv) -1 (sample 3406 is repeated twice) + 10 (.pdf) – 3 ( ids 3453, 3466, and 3478 are duplicate in both .csv & .pdf files) = 64. Thus we still need the LSA data for around ~ 31 tx. Among the LSA samples that we were able to connect to the cohort, there is also some confusion that we should further discuss later on in a separate email or call.
+
+ 
+
+Below is the set of tx samples that we are missing LSA data.
+
+{2817, 3075, 2835, 2963, 2838, 2974, 3104, 3105, 2982, 2860, 3118, 2990, 2867, 2872, 3002, 3003, 3006, 3135, 3140, 2885, 3529, 2767, 3152, 2896, 3026, 3546, 2907, 3042, 2801, 3188, 3703}
+
+ 
+
+ 
+
+Kind regards,  
+
+Danial
+
+ 
+================================================================================================
+Hi Alek
+
+ 
+
+Sure we can send this.
+
+ 
+
+@Danial, could you compare the ID numbers from the files send vs. the ones in the Excel file to see what is precisely missing? If you send it to Alek he can have a look at it.
+
+Beste regards, Henny
+
+================================================================================================
+Hi Henny,
+
+ 
+
+Likely we will be missing data for some of the preDSA patients but 30 sounds a lot. Also, we had 2 patients with early postTX testing as the day0 SAB was DSA negative but they had memory response early postTX. 
+
+Would it be possible to send me the list of the 30 patients with missing data so I can have a close look during the weekend and see if I have sent you maybe wrong files.
+
+Thanks! 
+
+Alek 
+
+================================================================================================
+
+Hi Alek,
+
+The files were well received, and due to the holidays we now had a first peak at them. The Leuven cohort contains 95 patients with DSA. The 73 extracts from luminex files contain pretransplant info from 54 DSA+ patients (as some were both class-I and –II positive, whereas other were post-TX data). Next to that data from 11 patients were send as PDF files.
+
+So all together we can analyze 54+11=65 DSA+ patients. Are there data missing to complete cohort of 95 patients or are these not present anymore? We did notice that from the early cohort transplants with ID numbers from 2925-2998 were not included in the CSV files.
+p.s.  we could not connect the CSV file labelled with the number 2790 to a transplant ID number.
+
+Best regards, Henny
+
+
+================================================================================================
+Hi Henny,
+
+I prepared and sent your data to Maarten yesterday to check if the files are prepared according to your contract with KU/UZ Leuven.
+
+If everything is OK, you should receive them soon.
+
+Regarding the raw antibody data, you will get them in 3 different formats. CSV file per sample (per Transplant ID number), 
+few CSV files per run but containing only the samples you will need (Transplant ID numbers) and scans of hard copy results of 10 patients. 
+Feel free to reach out to me if you need further clarification. 
+
+Best,
+Alek
+
+
+
+================================================================================================ 
+Hi Henny, 
+
+My apologies for the delay. 
+
+Moving to the USA was a huge thing and I couldn't anticipate many things that needed to be arranged before and after arriving in Chicago, but I'm all set now. 
+
+I retrieved almost all the pre-transplant DSA and have them in a different format (85% cvs files and 15% scans). I'm preparing the files, will discuss them with Maarten and send you the data by the end of the week (including Sunday :)).  
+
+I hope this works for you.
+
+Regards,
+
+Alek
