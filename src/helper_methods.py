@@ -3,7 +3,7 @@ from typing import  Sequence, Union, List
 import pandas as pd
 import numpy as np
 from lifelines import KaplanMeierFitter
-from lifelines.statistics import multivariate_logrank_test
+from lifelines.statistics import multivariate_logrank_test, logrank_test
 from lifelines.plotting import add_at_risk_counts
 import statsmodels.api as sm
 import statsmodels.formula.api as smf
@@ -12,8 +12,14 @@ import matplotlib.pyplot as plt
 from matplotlib.offsetbox import AnchoredText
 
 def _get_indexes(df, donor_type, desa_spec:Union[str, Sequence]=None):
+    """ 
+
+    The returned tuple of indexes include 
+    - T1: Deceased Donors without DESA
+    - T2: Deceased Donors with Other  DESA
+    - T3: Deceased Donors with Specific DESA
+    """
     
-    # donor_type = 'Deceased'
     desa_spec = set([desa_spec]) if isinstance(desa_spec, str) else desa_spec
     if 'TypeOfDonor_NOTR' in df.columns:
         ind_dead = df.TypeOfDonor_NOTR == donor_type 
@@ -56,6 +62,7 @@ def create_treatment_grups(data, desa_spec:Union[str, List[set]]=None):
                 Specific_DESA = df['DESA'].apply(lambda x: 1 if x & desa_spec[0] else 0),
                 Other_DESA =  df['DESA'].apply(lambda x: 1 if (x and not x & desa_spec[0]) else 0),
             )
+
             return df.assign(
                 Groups = df[['No_DESA', 'Specific_DESA', 'Other_DESA']].values.argmax(1) + 1
             )
@@ -111,7 +118,7 @@ def find_ipw(df, confounders, treatments, scaler='standard', num_col:list=None, 
     """
 
     df_ipw = df.copy(deep=True)
-    # scale the features
+    # scale the numerical features
     if scaler:
         df_ipw = feature_scaler(df_ipw, num_col, scaler=scaler)
     
@@ -140,7 +147,8 @@ def kaplan_meier_curves(df:pd.DataFrame,
                         labels:list=None,
                         timeline:np.array= np.linspace(0, 10, 1000),
                         adjust=False,
-                        p_value=True,):
+                        p_value=True,
+                        p_value_t0:float=-1):
 
     assert 'Groups' in df.columns, 'Groups column is missing'
     if 'GraftSurvival10Y_R' in df.columns:
@@ -152,26 +160,28 @@ def kaplan_meier_curves(df:pd.DataFrame,
 
     T = [df.loc[ind_T1, time], df.loc[ind_T2, time], df.loc[ind_T3, time]]
     E = [df.loc[ind_T1, failure], df.loc[ind_T2, failure], df.loc[ind_T3, failure]]
-    df_p = df[df.TypeOfDonor_NOTR == donor_type].reset_index()
     if adjust:
         assert 'w' in df.columns, 'Weight column is missing'
         W = [df.loc[ind_T1, 'w'], df.loc[ind_T2, 'w'], df.loc[ind_T3, 'w']]
-        weights = df_p['w']
+        # weights = df_p['w']
     else:
         W = [None] * 3
-        weights = None
+        # weights = None
     kmfs = [
         KaplanMeierFitter(label=labels[i])
         .fit(T[i], event_observed=E[i], timeline=timeline, weights=W[i]) for i in range(len(T)) 
     ]
+    df_p = df[df.TypeOfDonor_NOTR == donor_type].reset_index()
     if p_value:
         p_value = multivariate_logrank_test(
             event_durations=df_p['GraftSurvival10Y_R'], 
             groups=df_p['Groups'],
             event_observed=df_p['FailureCode10Y_R'],
-            weights=weights,
-            weightings='wilcoxon',# 'tarone-ware', 'peto', 'fleming-harrington' 
-            ).p_value
+            t0_=p_value_t0,
+            # weights=weights,
+            weightings='fleming-harrington', #'wilcoxon',# 'tarone-ware', 'peto', 'fleming-harrington' 
+            p=100,
+            q=0).p_value
     return kmfs, p_value
     
 def plot_kaplan_meier_curve(kmfs:list, 
@@ -187,7 +197,8 @@ def plot_kaplan_meier_curve(kmfs:list,
                             ylabel:str='Graft Survival (%)',
                             colors:List[str]= ['black', 'blue', 'red'],
                             verbose:bool=False,
-                            x_lim=None):
+                            x_lim=None,
+                            save:bool=False):
     """ kmfs: is a list of KaplanMeierFitter instances already fitted """
 
     if not ax:
@@ -218,12 +229,14 @@ def plot_kaplan_meier_curve(kmfs:list,
         ax.set_xlim(x_lim)
     # plt.tight_layout()
     # plt.show()
-
+    if save:
+        from random import random
+        fig.savefig(str(random()) + '.pdf')
     # Final values
     if verbose:
         kmfs_final = [kmf.survival_function_.values[-1][0] for kmf in kmfs]
         print(f'Top curve: {kmfs_final[0]:.2f}, Middle curve: {kmfs_final[1]: .2f}, Lower curve:{kmfs_final[2]: .2f}')
-        print(f'10-Year Gap is: {kmfs_final[0] - kmfs_final[2] : .2f}')
+        print(f'10-Year Gap is: {kmfs_final[1] - kmfs_final[2] : .2f}')
         kmfs_100 = [kmf.survival_function_.values[100][0] for kmf in kmfs]
         print(f'1-Year Gap is: {kmfs_100[1] - kmfs_100[2] : .2f}')
 
@@ -254,3 +267,101 @@ def plot_scatter_diff(dataframe, desa_sets:list, confounders:list, donor_type:st
     ax.legend(prop={"size":10})
     ax.grid(grid)
     plt.tight_layout()
+
+
+def kaplan_meier_curves_automation(df:pd.DataFrame, 
+                        desa_spec:Union[str, Sequence]=None,
+                        donor_type:str='Deceased',
+                        labels:list=None,
+                        timeline:np.array= np.linspace(0, 10, 1000),
+                        adjust=False,
+                        p_value=True,
+                        weightings='wilcoxon',
+                        p_value_t0:float=-1):
+
+    assert 'Groups' in df.columns, 'Groups column is missing'
+    if 'GraftSurvival10Y_R' in df.columns:
+        failure, time = 'FailureCode10Y_R', 'GraftSurvival10Y_R'
+    else:
+        failure, time = 'Failure', 'Survival[Y]'
+
+    _, ind_T2, ind_T3 = _get_indexes(df, donor_type=donor_type, desa_spec=desa_spec)
+    # discard the no desa index, index_T1, T, and E, 
+    T = [df.loc[ind_T2, time], df.loc[ind_T3, time]]
+    E = [df.loc[ind_T2, failure], df.loc[ind_T3, failure]]
+    if adjust:
+        assert 'w' in df.columns, 'Weight column is missing'
+        W = [df.loc[ind_T2, 'w'], df.loc[ind_T3, 'w']]
+    else:
+        W = [None] * 3
+        weights = None
+    kmfs = [
+        KaplanMeierFitter(label=labels[i])
+        .fit(T[i], event_observed=E[i], timeline=timeline, weights=W[i]) for i in range(len(T)) 
+    ]
+    
+    if p_value:
+        p_value = logrank_test(
+                        T[0], T[1],
+                        event_observed_A=E[0], event_observed_B=E[1],
+                        weightings=weightings,
+                        ).p_value
+    return kmfs, p_value
+
+
+ 
+def plot_kaplan_meier_curve_automation(kmfs:list, 
+                            p_value:float=None,
+                            title:str=None,
+                            ci_show:bool=False, 
+                            grid:bool=False, 
+                            add_counts:bool=True,
+                            ax=None,
+                            fontsize:int=15,
+                            legend_size = 10,
+                            xlabel:str='Years after Tranplantation',
+                            ylabel:str='Graft Survival (%)',
+                            colors:List[str]= ['black', 'blue', 'red'],
+                            verbose:bool=False,
+                            x_lim=None,
+                            save:bool=False):
+    """ kmfs: is a list of KaplanMeierFitter instances already fitted """
+
+    if not ax:
+        fig, ax = plt.subplots(figsize=(6, 5))
+    
+    for i, kmf in enumerate(kmfs):
+        kmf.survival_function_ = kmf.survival_function_ * 100 
+        kmf.plot(ci_show=ci_show, color=colors[i], ax=ax, grid=grid) 
+
+    # Add at-risk, censored, and failure statistics
+    if add_counts:
+        add_at_risk_counts(*kmfs, ax=ax, fontsize=15)
+
+    # add p-value 
+    if p_value: 
+        p_value_string = 'p < 0.0001' if p_value < 0.0001 else f'p = {p_value:.4f}'
+        ax.add_artist(AnchoredText(p_value_string, loc=4, frameon=False))
+
+    # Other figure settings
+    if title:
+        ax.set_title(title, fontsize=fontsize)
+    ax.set_xlabel(xlabel, fontsize=fontsize - 2)
+    ax.set_ylabel(ylabel, fontsize=fontsize - 2)
+    ax.legend(prop={"size":legend_size})
+    ax.grid(grid)
+    ax.set_ylim(0.2)
+    if x_lim:
+        ax.set_xlim(x_lim)
+    # plt.tight_layout()
+    # plt.show()
+    if save:
+        from random import random
+        fig.savefig(str(random()) + '.pdf')
+    # Final values
+    if verbose:
+        kmfs_final = [kmf.survival_function_.values[-1][0] for kmf in kmfs]
+        print(f'Top curve: {kmfs_final[0]:.2f}, Lower curve:{kmfs_final[1]: .2f}')
+        print(f'10-Year Gap is: {kmfs_final[0] - kmfs_final[1] : .2f}')
+        kmfs_100 = [kmf.survival_function_.values[100][0] for kmf in kmfs]
+        print(f'1-Year Gap is: {kmfs_100[0] - kmfs_100[1] : .2f}')

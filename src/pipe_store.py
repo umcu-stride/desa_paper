@@ -318,3 +318,9 @@ def dataframe_to_dataset(X, y):
     ds = tf.data.Dataset.from_tensor_slices((dict(X), y))
     ds = ds.shuffle(buffer_size=len(X))
     return ds
+
+
+
+def df_inv_val_split(df, val_size:float=0.25):
+    msk = np.random.rand(len(df)) < val_size
+    return (df[~msk], df[msk])
