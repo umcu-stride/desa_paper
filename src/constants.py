@@ -81,3 +81,14 @@ Epitope_DB = {
         '47KHL', '52SK', '61FT', '66IL', '66IT', '75I', '75IL', '75S', '76L', '76V', '129H',
         '129QS', '130A', '160A', '160AD', '160D', '160S', '175E'},
 }
+
+# See Table 5 in https://doi.org/10.3389/fimmu.2021.800946
+VERIFIED_CLASS_I = {'21H', '41T', '56R', '62GE', '62GRN', '62LQ', '65GK', '65QIA', '69AA', '69TNT', '70IAQ',
+                    '71TTS', '73TVS', '76ANT', '76ESN', '76VRN', '80I', '80K', '80N', '80TLR', '82LR', '90D',
+                    '107W', '127K', '144K', '144KR', '144QL', '144TKH', '145KHA', '149TAH', '151AHA', '161D',
+                    '163EW', '163LS/G', '163LW', '163R', '163RG', '163RW', '166DG', '177KT', '180E', '219W',
+                    '253Q', '267QE'}
+
+# See Table 6 in https://doi.org/10.3389/fimmu.2021.800946
+VERIFIED_CLASS_II = {'16Y', '25Q', '57DE', '74R', '77T', '45EV', '45GV', '55PP', '55R', '77R', '77T', '125SQ',
+                     '56A', '56E', '84DEAV', '85GPM'}
