@@ -7,8 +7,6 @@ from typing import List, Literal
 from src.constants import (
     Epitope_DB,
     RELEVANT_DESA_BAD, 
-    RELEVANT_DESA_GOOD,
-    RELEVANT_DESA_GOOD_OLD,
 )
 from src.utility import get_hla_class, flatten2list, flatten2string, epitopeseq2str, sequence2string
 logger = logging.getLogger()
@@ -97,7 +95,7 @@ def features_from_antibody_epitopes(df):
     df = df.assign(
         No_DESA = df['DESA'].apply(lambda x: 0 if len(x) else 1),
         Relevant_DESA_Bad = df['DESA'].apply(lambda x: int(bool(x & RELEVANT_DESA_BAD))),
-        Relevant_DESA_Good = df['DESA'].apply(lambda x: int(bool(x & RELEVANT_DESA_GOOD))),
+        # Relevant_DESA_Good = df['DESA'].apply(lambda x: int(bool(x & RELEVANT_DESA_GOOD))),
         Class_I = df.EpvsHLA_Donor.apply(
                     lambda x: int( ('I' in get_class(x)) & ('II' not in get_class(x)) ) 
                 ),
@@ -221,7 +219,7 @@ def censoring_deaths(df:pd.DataFrame):
     Transplants where patient dies with functioning graft, i.e. 2 is changed to no failure, i.e. 0
     Method set_time_event_label should be run beforehand
     """
-
+    df['E'] = df['E'].astype('int16')
     return df.assign(
         E=df['E'].map({0:0, 1:1, 2:0})
     )

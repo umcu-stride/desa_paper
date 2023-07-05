@@ -13,6 +13,9 @@ tqdm = "*"
 lifelines = "*"
 desa-paper = {editable = true, path = "."}
 statsmodels = "*"
+tableone = "*"
+sklearn = "*"
+openpyxl = "*"
 
 [dev-packages]
 ipykernel = "*"

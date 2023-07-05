@@ -148,7 +148,9 @@ def kaplan_meier_curves(df:pd.DataFrame,
                         timeline:np.array= np.linspace(0, 10, 1000),
                         adjust=False,
                         p_value=True,
-                        p_value_t0:float=-1):
+                        p_value_t0:float=-1,
+                        weightings='wilcoxon',
+                        **kwargs):
 
     assert 'Groups' in df.columns, 'Groups column is missing'
     if 'GraftSurvival10Y_R' in df.columns:
@@ -179,7 +181,7 @@ def kaplan_meier_curves(df:pd.DataFrame,
             event_observed=df_p['FailureCode10Y_R'],
             t0_=p_value_t0,
             # weights=weights,
-            weightings='fleming-harrington', #'wilcoxon',# 'tarone-ware', 'peto', 'fleming-harrington' 
+            weightings=weightings, #'fleming-harrington', #'wilcoxon',# 'tarone-ware', 'peto', 'fleming-harrington' 
             p=100,
             q=0).p_value
     return kmfs, p_value
